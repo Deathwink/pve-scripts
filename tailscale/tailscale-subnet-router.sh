@@ -49,7 +49,7 @@ LXC_CONF="/etc/pve/lxc/${CT_ID}.conf"
 cat <<EOF >> $LXC_CONF
 lxc.cap.drop =
 lxc.apparmor.profile = unconfined
-lxc.cgroup.devices.allow = a
+lxc.cgroup2.devices.allow = a
 lxc.mount.auto = proc:rw sys:rw
 lxc.mount.entry = /dev/net/tun dev/net/tun none bind,create=file
 EOF
