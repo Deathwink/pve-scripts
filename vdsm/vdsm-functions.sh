@@ -377,7 +377,7 @@ sata_disk_menu() {
 # Function vm_notes_html
 vm_notes_html() {
     cat <<EOF
-<h2><center>vDSM.Arc</center></h2>
+<h2>vDSM.Arc</h2>
 <hr>
 <h3>🚀 Arc Loader</h3>
 <p>
