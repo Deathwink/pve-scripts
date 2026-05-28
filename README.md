@@ -27,6 +27,24 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/And-rix/pve-scripts/main
 
 ---
 
+## 🔗 tailscale-watchdog-addon.sh
+
+Self-healing Watchdog Add-On for Tailscale LXCs
+
+An automated bash script that monitors Tailscale connectivity by pinging random online peers (from your own tailscale network). It automatically restarts tailscaled upon connection loss and includes built-in logging and cron integration.
+
+    logs /var/log/tailscale-watchdog.log
+    script /usr/local/bin/tailscale-watchdog.sh
+    cronjob crontab -e
+
+❯ Execute inside LXC container!
+  
+```shell
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/And-rix/pve-scripts/main/tailscale/tailscale-watchdog-addon.sh)"
+```
+
+---
+
 ## 🧰 **vdsm-arc-toolkit.sh**
 
 All-in-one toolkit for **vDSM.Arc Loader** by [AuxXxilium](https://github.com/AuxXxilium) on your Proxmox VE host.
