@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # LoxBerry 4 VM installer for Proxmox VE
-# Script version: 0.2.1 (DietPi Trixie)
+# Script version: 0.3.0 (DietPi Trixie)
 # Creates a DietPi Trixie VM following the LoxBerry Proxmox installation guide.
 # Run this script on the Proxmox VE host as root.
 #
@@ -12,7 +12,7 @@ export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
 APP="LoxBerry 4"
-SCRIPT_VERSION="0.2.1"
+SCRIPT_VERSION="0.3.0"
 DIETPI_BASE_URL="https://dietpi.com/downloads/images"
 DIETPI_IMAGE="DietPi_Proxmox-x86_64-Trixie.qcow2.xz"
 DIETPI_URL="${DIETPI_BASE_URL}/${DIETPI_IMAGE}"
@@ -171,11 +171,6 @@ prompt_settings() {
     3>&1 1>&2 2>&3)" || exit 1
   validate_integer "$MEMORY" || die "Invalid memory size."
 
-  DISK_SIZE="$(whiptail --title "$APP - Disk" \
-    --inputbox "Final disk size in GiB:" 10 60 "16" \
-    3>&1 1>&2 2>&3)" || exit 1
-  validate_integer "$DISK_SIZE" || die "Invalid disk size."
-
   STORAGE="$(choose_storage)" || exit 1
   BRIDGE="$(choose_bridge)" || exit 1
 
@@ -191,7 +186,7 @@ prompt_settings() {
 Name:        $VM_NAME
 CPU cores:   $CORES
 Memory:      ${MEMORY} MiB
-Disk:        ${DISK_SIZE} GiB
+Disk:        imported DietPi QCOW2 image
 Storage:     $STORAGE
 Bridge:      $BRIDGE
 Autostart:   $ONBOOT
@@ -233,14 +228,9 @@ create_vm() {
     --cpu kvm64 \
     --cores "$CORES" \
     --memory "$MEMORY" \
-    --balloon 0 \
     --scsihw virtio-scsi-single \
     --net0 "virtio,bridge=${BRIDGE}" \
-    --agent enabled=1 \
-    --onboot "$ONBOOT" \
-    --tablet 0 \
-    --serial0 socket \
-    --vga serial0
+    --onboot "$ONBOOT"
 
   VM_CREATED=1
 
@@ -265,21 +255,10 @@ create_vm() {
 
   [[ -n "$volume_id" ]] || die "Unable to determine the imported Proxmox volume ID."
 
-  qm set "$VM_ID" --scsi0 "${volume_id},discard=on,ssd=1"
-  qm set "$VM_ID" --boot "order=scsi0" --bootdisk scsi0
+  qm set "$VM_ID" --scsi0 "$volume_id"
+  qm set "$VM_ID" --boot "order=scsi0"
 
-  local current_bytes target_bytes
-  current_bytes="$(qemu-img info --output=json "$QCOW2_IMAGE" | grep -o '"virtual-size":[[:space:]]*[0-9]*' | grep -o '[0-9]*' | head -n1 || true)"
-  target_bytes=$((DISK_SIZE * 1024 * 1024 * 1024))
-
-  if [[ -n "$current_bytes" ]] && (( target_bytes > current_bytes )); then
-    info "Growing virtual disk to ${DISK_SIZE} GiB..."
-    # Proxmox accepts an absolute size such as 16G. Byte suffixes like +123B
-    # are rejected by qm on supported PVE versions.
-    qm disk resize "$VM_ID" scsi0 "${DISK_SIZE}G"
-  elif [[ -n "$current_bytes" ]] && (( target_bytes < current_bytes )); then
-    warn "Requested disk size is smaller than the image; keeping the original image size."
-  fi
+  info "Using the imported DietPi QCOW2 image at its original virtual size."
 
   success "VM ${VM_ID} created."
 }
@@ -310,12 +289,8 @@ Next steps:
 4. After installation, open LoxBerry in a browser using the VM's IP address.
 
 Useful commands on the Proxmox host:
-  qm terminal ${VM_ID}
   qm status ${VM_ID}
-  qm guest cmd ${VM_ID} network-get-interfaces
-
-Note: The QEMU Guest Agent becomes available only after it is installed
-and running inside the guest.
+  qm config ${VM_ID}
 EOF
 }
 
@@ -331,7 +306,8 @@ main() {
   whiptail --title "$APP installer" --msgbox \
 "This script creates a Proxmox VM from the official DietPi Proxmox x86_64 Trixie image for LoxBerry 4.
 
-It creates a VM from the dedicated DietPi Proxmox x86_64 Trixie qcow2 image for LoxBerry 4.
+The downloaded QCOW2 image is imported directly and attached as the VM system disk.
+No additional empty disk is created and the imported disk is not resized.
 
 VM layout:
 - Linux VM
